@@ -1,18 +1,50 @@
-# Unit Tests for Example Module
-#
-# These tests use mock providers — no real AWS calls are made.
-# Run with: terraform test
-# Run verbose: terraform test -verbose
-# Run specific: terraform test -run "test_name"
-
 mock_provider "aws" {}
 
-# ---------------------------------------------------------------------------
-# Test: Module creates resources with valid inputs
-# ---------------------------------------------------------------------------
-# variables {
-#   name        = "test-bucket"
-#   environment = "dev"
-#   namespace   = "unit"
-#   enabled     = true
-# }
+run "enables_versioning_by_default" {
+  variables {
+    name        = "test"
+    environment = "dev"
+    namespace   = "unit"
+    bucket_id   = "my-test-bucket"
+  }
+
+  assert {
+    condition     = output.versioning_status == "Enabled"
+    error_message = "Should default to Enabled versioning"
+  }
+
+  assert {
+    condition     = output.id != null
+    error_message = "id output should not be null when enabled"
+  }
+}
+
+run "creates_nothing_when_disabled" {
+  variables {
+    name        = "test"
+    environment = "dev"
+    namespace   = "unit"
+    enabled     = false
+    bucket_id   = "my-test-bucket"
+  }
+
+  assert {
+    condition     = length(aws_s3_bucket_versioning.this) == 0
+    error_message = "No resource should be created when disabled"
+  }
+}
+
+run "supports_suspended_status" {
+  variables {
+    name              = "test"
+    environment       = "dev"
+    namespace         = "unit"
+    bucket_id         = "my-test-bucket"
+    versioning_status = "Suspended"
+  }
+
+  assert {
+    condition     = output.versioning_status == "Suspended"
+    error_message = "Should support Suspended versioning"
+  }
+}
