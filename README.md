@@ -43,12 +43,13 @@ Configures object versioning for an S3 bucket. Versioning preserves all versions
 
 ```hcl
 module "bucket_versioning" {
-  source = "github.com/PlatformStackPulse/tf-atom-s3-bucket-versioning-aws?ref=v1.0.0"
+  source = "git::https://github.com/PlatformStackPulse/tf-atom-s3-bucket-versioning-aws.git?ref=v1.0.0"
 
-  context   = module.this.context
-  bucket_id = module.bucket.bucket_id
+  context   = module.this.context     # tf-label context (namespace/stage/name/...)
+  bucket_id = module.bucket.bucket_id # REQUIRED — ID of the bucket to configure
 
-  versioning_status = "Enabled"  # default
+  versioning_status = "Enabled"  # optional, default "Enabled"
+  mfa_delete        = "Disabled" # optional, default "Disabled"
 }
 ```
 
@@ -113,3 +114,26 @@ module "bucket_versioning" {
 | <a name="output_id"></a> [id](#output\_id) | ID of the versioning configuration |
 | <a name="output_versioning_status"></a> [versioning\_status](#output\_versioning\_status) | The versioning status |
 <!-- END_TF_DOCS -->
+
+## Tests
+
+Unit tests use Terraform's native `terraform test` framework with a mocked AWS
+provider, so they run offline with no AWS credentials and make no API calls.
+Assertions target only plan-known values (the tf-label `id`, input pass-throughs,
+and planned resource counts) — never computed `arn`/`id`, which are unknown under
+a mock provider.
+
+```bash
+# Unit tests (mocked provider, no credentials required)
+terraform init -backend=false
+terraform test -test-directory=tests/unit
+
+# Or via the Makefile
+make test-unit
+```
+
+| Run block | What it verifies |
+|-----------|------------------|
+| `creates_when_enabled` | One `aws_s3_bucket_versioning` is planned; `enabled` output is `true`; status defaults to `Enabled`. |
+| `supports_suspended_status` | `versioning_status` input passes through to the output. |
+| `disabled_creates_nothing` | With `enabled = false`, no resource is planned and `id` collapses to `null`. |
